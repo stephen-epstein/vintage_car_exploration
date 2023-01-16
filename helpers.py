@@ -88,8 +88,11 @@ def getdesc(urls: str):
     """
     tempurl = urls.partition("listing/")[2]
     final = tempurl.split("-")
-    final.pop()
+    test = final[-1].replace("/", "")
+    if test.isdigit() == True:
+        final.pop()
     desc = " ".join(final)
+    desc = desc.replace("/", "")
     return desc
 
 
@@ -165,14 +168,18 @@ def getlocation(loc: str):
         town: Town of where the car was being sold from
         State: State of where the car was being sold from
     """
-    index = loc.index("/place/")
-    town = loc[index + 7 : index + 40].partition(",")[0]
-    town = town.replace("%20", " ")
+    if "/place/" in loc:
+        index = loc.index("/place/")
+        town = loc[index + 7 : index + 40].partition(",")[0]
+        town = town.replace("%20", " ")
 
-    state = loc[index + 7 : index + 200].partition(",")[2]
-    state = state.partition('"')[0]
-    state = state.replace("%20", " ")
-    state = re.sub(r"[0-9]+", "", state)
+        state = loc[index + 7 : index + 200].partition(",")[2]
+        state = state.partition('"')[0]
+        state = state.replace("%20", " ")
+        state = re.sub(r"[0-9]+", "", state)
+    else:
+        town = "N/A"
+        state = "N/A"
     return town, state
 
 
@@ -206,9 +213,9 @@ def getmileage(mileage: str):
 
     if "kilometers" in mileage:
         if miles.isdigit() == True:
-            miles.append("K")
+            miles = miles + "K"
         else:
-            milestmu.append("K")
+            milestmu = milestmu + "K"
     return miles, milestmu
 
 
@@ -253,6 +260,18 @@ def getindicators(contents):
         overdrive = 1
     else:
         overdrive = 0
+
+    # Check for forced induction
+    if "turbocharged" in contents or "Turbocharged" in contents:
+        turbo = 1
+    else:
+        turbo = 0
+
+    if "supercharged" in contents or "Supercharged" in contents:
+        super = 1
+    else:
+        super = 0
+
     return (
         rust,
         refurbished,
@@ -262,12 +281,18 @@ def getindicators(contents):
         metalrepair,
         hardtop,
         overdrive,
+        turbo,
+        super,
     )
 
 
 def getlistings(make, model):
-    string = '"title":"'
     input = make + " " + model
+    string = '"title":"'
+    if " " in make:
+        make = make.replace(" ", "-")
+    if " " in model:
+        model = model.replace(" ", "-")
     url = "https://bringatrailer.com/" + make + "/"
     urls = []
     r = requests.get(url)
@@ -297,11 +322,14 @@ def getlistings(make, model):
         index = index + len(word) + 3
         id = url[index : index + 30].partition("]")[0]
         ids.append(id)
-    return ids, urls
+    return ids, urls, input
 
 
 def getenginedesc(essentials, engine):
-    essentials = essentials.findAll("li")
+    try:
+        essentials = essentials.findAll("li")
+    except:
+        essentials = essentials
     chassis = essentials[0].text
     chassis = chassis.partition(":")[2]
     specialdesc = "N/A"
@@ -316,21 +344,32 @@ def getenginedesc(essentials, engine):
     brakedesc = "N/A"
 
     for i in range(1, len(essentials)):
-        if "Mile" in essentials[i].text or "Kilometer" in essentials[i].text:
+        if " Miles" in essentials[i].text or "Kilometer" in essentials[i].text:
             mileagedesc = essentials[i].text
-            enginedesc = essentials[i + 1].text
+            try:
+                enginedesc = essentials[i + 1].text
+            except:
+                enginedesc = "N/A"
             if engine == -1.0 and "cc" in enginedesc:
                 index = enginedesc.partition("cc")[0]
                 engine = re.sub(r"[^0-9]", "", index)
                 engine = round(int(engine) / 1000, 1)
-            if engine == -1.0 and "ci" in enginedesc:
+            elif engine == -1.0 and "ci" in enginedesc and "cc" not in enginedesc:
                 index = enginedesc.partition("ci")[0]
                 engine = re.sub(r"[^0-9]", "", index)
-                engine = round(int(engine) / 61.0237, 1)
+                try:
+                    engine = round(int(engine) / 61.0237, 1)
+                except:
+                    engine = -1.0
             if i != 1:
                 specialdesc = essentials[1].text
     for i in range(1, len(essentials)):
-        if "Transmission" in essentials[i].text or "Gearbox" in essentials[i].text:
+        if (
+            "Transmission" in essentials[i].text
+            or "Gearbox" in essentials[i].text
+            or "-speed" in essentials[i].text
+            or "-Speed" in essentials[i].text
+        ):
             transdesc = essentials[i].text
     for i in range(1, len(essentials)):
         if (
@@ -340,7 +379,7 @@ def getenginedesc(essentials, engine):
         ):
             paintdesc = essentials[i].text
     for i in range(1, len(essentials)):
-        if "Upholstery" in essentials[i].text:
+        if "Upholstery" in essentials[i].text or "Interior" in essentials[i].text:
             interiordesc = essentials[i].text
     for i in range(1, len(essentials)):
         if "Carburetor" in essentials[i].text:
