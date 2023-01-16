@@ -129,6 +129,8 @@ def getmonth(title: str):
         month = 11
     elif "December" in title:
         month = 12
+    else:
+        month = "N/A"
     return month
 
 
@@ -197,25 +199,25 @@ def getmileage(mileage: str):
         index = mileage.index("Kilometers")
 
     if "TMU" not in mileage[index + 10 : index + 20]:
-        miles = mileage[index - 12 : index].partition("<li>")[2]
+        miles = mileage[index - 20 : index].partition("<li>")[2]
         if "k" in miles or "K" in miles:
             miles = re.sub(r"[^0-9]", "", miles)
             miles = int(miles) * 1000
         else:
             miles = re.sub(r"[^0-9]", "", miles)
     else:
-        milestmu = mileage[index - 12 : index].partition("<li>")[2]
+        milestmu = mileage[index - 20 : index].partition("<li>")[2]
         if "k" in milestmu or "K" in milestmu:
             milestmu = re.sub(r"[^0-9]", "", milestmu)
             milestmu = int(milestmu) * 1000
         else:
             milestmu = re.sub(r"[^0-9]", "", milestmu)
 
-    if "kilometers" in mileage:
-        if miles.isdigit() == True:
-            miles = miles + "K"
-        else:
-            milestmu = milestmu + "K"
+    if "kilometers" in mileage or "Kilometers" in mileage:
+        if miles == "TMU":
+            miles = "TMU - K"
+        elif milestmu == "N/A":
+            milestmu = "N/A - K"
     return miles, milestmu
 
 
@@ -318,10 +320,11 @@ def getlistings(make, model):
         r = requests.get(urltemp)
         soup = BeautifulSoup(r.content, "html.parser")
         url = str(soup.findAll("div"))
-        index = url.index(word)
-        index = index + len(word) + 3
-        id = url[index : index + 30].partition("]")[0]
-        ids.append(id)
+        if word in url:
+            index = url.index(word)
+            index = index + len(word) + 3
+            id = url[index : index + 30].partition("]")[0]
+            ids.append(id)
     return ids, urls, input
 
 
@@ -342,6 +345,7 @@ def getenginedesc(essentials, engine):
     carbdesc = "N/A"
     wheeldesc = "N/A"
     brakedesc = "N/A"
+    suspdesc = "N/A"
 
     for i in range(1, len(essentials)):
         if " Miles" in essentials[i].text or "Kilometer" in essentials[i].text:
@@ -390,6 +394,9 @@ def getenginedesc(essentials, engine):
     for i in range(1, len(essentials)):
         if "Brakes" in essentials[i].text:
             brakedesc = essentials[i].text
+    for i in range(1, len(essentials)):
+        if "Suspension" in essentials[i].text:
+            suspdesc = essentials[i].text
 
     return (
         chassis,
@@ -402,5 +409,6 @@ def getenginedesc(essentials, engine):
         carbdesc,
         wheeldesc,
         brakedesc,
+        suspdesc,
         engine,
     )
