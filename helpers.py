@@ -289,43 +289,62 @@ def getindicators(contents):
 
 
 def getlistings(make, model):
-    input = make + " " + model
-    string = '"title":"'
-    if " " in make:
-        make = make.replace(" ", "-")
-    if " " in model:
-        model = model.replace(" ", "-")
-    url = "https://bringatrailer.com/" + make + "/"
-    urls = []
-    r = requests.get(url)
-    soup = BeautifulSoup(r.content, "html.parser")
-    url = str(soup.findAll("div"))
-    search = string + input
-    r = len(input) + len(string)
-    for i in range(0, len(url)):
-        if url[i : i + r] == search:
-            par_word = '"url":"'
-            tempurl = url[i + r : i + 200].partition(par_word)[2]
-            tempurl = tempurl.partition('"')[0]
-            # .partition('"')[0]
-            if "\\" in tempurl:
-                tempurl = tempurl.replace("\\", "")
-                if tempurl not in urls:
-                    urls.append(tempurl.replace("\\", ""))
     ids = []
-    for i in urls:
-        urltemp = i
-        word = "bat_keyword_pages"
-        listings = []
-        r = requests.get(urltemp)
+
+    if model == "":
+        url = "https://bringatrailer.com/" + make
+        urls = []
+        r = requests.get(url)
+        soup = BeautifulSoup(r.content, "html.parser")
+
+        url = str(soup.findAll("div"))
+
+        for i in range(0, len(url)):
+            if url[i : i + 5] == '"url"':
+                tempurl = url[i + 7 : i + 200].partition('"')[0]
+                if "\\" in tempurl:
+                    tempurl = tempurl.replace("\\", "")
+                    if tempurl not in urls:
+                        urls.append(tempurl.replace("\\", ""))
+        ids = urls
+
+    else:
+        input = make + " " + model
+        string = '"title":"'
+        if " " in make:
+            make = make.replace(" ", "-")
+        if " " in model:
+            model = model.replace(" ", "-")
+        url = "https://bringatrailer.com/" + make + "/"
+        urls = []
+        r = requests.get(url)
         soup = BeautifulSoup(r.content, "html.parser")
         url = str(soup.findAll("div"))
-        if word in url:
-            index = url.index(word)
-            index = index + len(word) + 3
-            id = url[index : index + 30].partition("]")[0]
-            ids.append(id)
-    return ids, urls, input
+        search = string + input
+        r = len(input) + len(string)
+        for i in range(0, len(url)):
+            if url[i : i + r] == search:
+                par_word = '"url":"'
+                tempurl = url[i + r : i + 200].partition(par_word)[2]
+                tempurl = tempurl.partition('"')[0]
+                # .partition('"')[0]
+                if "\\" in tempurl:
+                    tempurl = tempurl.replace("\\", "")
+                    if tempurl not in urls:
+                        urls.append(tempurl.replace("\\", ""))
+        for i in urls:
+            urltemp = i
+            word = "bat_keyword_pages"
+            listings = []
+            r = requests.get(urltemp)
+            soup = BeautifulSoup(r.content, "html.parser")
+            url = str(soup.findAll("div"))
+            if word in url:
+                index = url.index(word)
+                index = index + len(word) + 3
+                id = url[index : index + 30].partition("]")[0]
+                ids.append(id)
+    return ids, urls
 
 
 def getenginedesc(essentials, engine):
