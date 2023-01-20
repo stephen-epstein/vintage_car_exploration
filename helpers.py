@@ -1,12 +1,9 @@
 from bs4 import BeautifulSoup
 import requests
 import re
-import pandas as pd
-import os
-import sys
 
 
-def geturls(urlstart: str, urlend: str, pgend: int, urls: list):
+def get_urls(urlstart: str, urlend: str, pgend: int, urls: list):
     """This function pulls the list of urls for each listing.
 
     Args:
@@ -19,16 +16,19 @@ def geturls(urlstart: str, urlend: str, pgend: int, urls: list):
     """
     url = []
     pgnum = 1
+
+    # Iterate through each page (Show More in BaT) and collect urls
     while pgnum < pgend:
         url.append(urlstart + str(pgnum) + urlend)
         pgnum += 1
 
+    # For each URL get soup
     for j in range(0, len(url)):
         r = requests.get(url[j])
         soup = BeautifulSoup(r.content, "html.parser")
         urltemp = str(soup)
         i = 0
-
+        # Search page for all listings and try to filter out non-car listings
         while i < len(urltemp):
             if urltemp[i : i + 5] == '"url"':
                 tempurl = urltemp[i + 7 : i + 200].partition('"')[0]
@@ -51,17 +51,17 @@ def geturls(urlstart: str, urlend: str, pgend: int, urls: list):
     return urls
 
 
-def getengine(transmission: str):
+def get_engine(transmission: str):
     """This function pulls the engine displacement. If displacement is negative, the engine displacement was not available.
 
     Args:
         transmission: Side bar text info on listing
 
     Returns:
-        final: float of engine displacement
+        eng: float of engine displacement
     """
     i = 0
-    final = -1
+    eng = -1
     while i < len(transmission):
         if (
             transmission[i].isdigit() == True
@@ -69,14 +69,14 @@ def getengine(transmission: str):
             and transmission[i + 2].isdigit() == True
             and (transmission[i + 3] == "-" or transmission[i + 3] == "L")
         ):
-            final = transmission[i : i + 3]
+            eng = transmission[i : i + 3]
             break
         else:
             i += 1
-    return float(final)
+    return float(eng)
 
 
-def getdesc(urls: str):
+def get_desc(urls: str):
     """This function pulls the year, make and model of the car. Sometimes it will pull extra numbers because of how the urls are formatted but that is ok.
 
     Args:
@@ -95,7 +95,7 @@ def getdesc(urls: str):
     return desc
 
 
-def getmonth(title: str):
+def get_month(title: str):
     """This function pulls the month of the sale date.
 
     Args:
@@ -105,44 +105,29 @@ def getmonth(title: str):
         month: Integer of month
     """
 
-    # months = []
+    months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ]
 
-    # for index, item in enumerate(months):
-    #     if item in title:
-    #         return index + 1
+    for index, item in enumerate(months):
+        if item in title:
+            return index + 1
 
-    # return "N/A"
-
-    if "January" in title:
-        month = 1
-    elif "February" in title:
-        month = 2
-    elif "March" in title:
-        month = 3
-    elif "April" in title:
-        month = 4
-    elif "May" in title:
-        month = 5
-    elif "June" in title:
-        month = 6
-    elif "July" in title:
-        month = 7
-    elif "August" in title:
-        month = 8
-    elif "September" in title:
-        month = 9
-    elif "October" in title:
-        month = 10
-    elif "November" in title:
-        month = 11
-    elif "December" in title:
-        month = 12
-    else:
-        month = "N/A"
-    return month
+    return "N/A"
 
 
-def getsaleprice(title: str, loc: str):
+def get_sale_price(title: str, loc: str):
     """This function pulls the sale price and whether the car met reserve or not.
 
     Args:
@@ -168,7 +153,7 @@ def getsaleprice(title: str, loc: str):
     return sold, price
 
 
-def getlocation(loc: str):
+def get_location(loc: str):
     """This function pulls the sale price and whether the car met reserve or not.
 
     Args:
@@ -192,7 +177,7 @@ def getlocation(loc: str):
     return town, state
 
 
-def getmileage(mileage: str):
+def get_mileage(mileage: str):
     """This function pulls the mileage of the car or if TMU (Total Mileage Unknown) it will try to pull the number of miles listed on the odometer.
 
     Args:
@@ -237,7 +222,7 @@ def getmileage(mileage: str):
     return miles, milestmu
 
 
-def getindicators(contents: str):
+def get_indicators(contents: str):
     """This function pulls multiple indicator variables if certain specific words appear in the listing body. (0 for no, 1 for yes)
 
     Args:
@@ -321,7 +306,7 @@ def getindicators(contents: str):
     )
 
 
-def getlistings(make: str, model: str):
+def get_listings(make: str, model: str):
     """This function accepts the make and model of the car and constructs a list of listing urls to iterate through in the main code.
 
     Args:
@@ -341,21 +326,24 @@ def getlistings(make: str, model: str):
         model = model.replace(" ", "-")
     url = "https://bringatrailer.com/" + make + "/"
     urls = []
+
     r = requests.get(url)
     soup = BeautifulSoup(r.content, "html.parser")
     url = str(soup.findAll("div"))
     search = string + input
     r = len(input) + len(string)
+
+    # Iterate through soup to find urls on each show more page and append to urls
     for i in range(0, len(url)):
         if url[i : i + r] == search:
             par_word = '"url":"'
             tempurl = url[i + r : i + 200].partition(par_word)[2]
             tempurl = tempurl.partition('"')[0]
-            # .partition('"')[0]
             if "\\" in tempurl:
                 tempurl = tempurl.replace("\\", "")
                 if tempurl not in urls:
                     urls.append(tempurl.replace("\\", ""))
+    # Iterate through the urls list and search for bat_keyword_pages to find unique ids for each page needed to make dynamic searching possible
     for i in urls:
         urltemp = i
         word = "bat_keyword_pages"
@@ -368,10 +356,11 @@ def getlistings(make: str, model: str):
             index = index + len(word) + 3
             id = url[index : index + 30].partition("]")[0]
             ids.append(id)
+
     return ids, urls
 
 
-def getenginedesc(essentials: str, engine: float):
+def get_engine_desc(essentials: str, engine: float):
     """This function accepts the essentials class from the soup and the current value of the engine size in float format and checks if the engine is correct and corrects the value if not.
     It also checks for certain key words and if found it will use the sentence as a description for the relevant output variable.
 
@@ -398,17 +387,16 @@ def getenginedesc(essentials: str, engine: float):
     chassis = essentials[0].text
     chassis = chassis.partition(":")[2]
     specialdesc = "N/A"
-    specialdesc = "N/A"
-    mileagedesc = "N/A"
-    enginedesc = "N/A"
-    transdesc = "N/A"
-    paintdesc = "N/A"
-    interiordesc = "N/A"
-    carbdesc = "N/A"
-    wheeldesc = "N/A"
-    brakedesc = "N/A"
-    suspdesc = "N/A"
+    mileagedesc = (
+        enginedesc
+    ) = (
+        transdesc
+    ) = (
+        paintdesc
+    ) = interiordesc = carbdesc = wheeldesc = brakedesc = suspdesc = specialdesc
 
+    # Iterate through each item in essentials and try to determine where mileage is listed, as well as engine description and use engine description to pull displacement
+    # Includes special description in special case
     for i in range(1, len(essentials)):
         if " Miles" in essentials[i].text or "Kilometer" in essentials[i].text:
             mileagedesc = essentials[i].text
@@ -433,6 +421,8 @@ def getenginedesc(essentials: str, engine: float):
                     engine = -1.0
             if i != 1:
                 specialdesc = essentials[1].text
+
+    # Iterate through essentials to find transmission, wheel, paint, upholstery, interior, carburetor, brakes, and suspension description
     for i in range(1, len(essentials)):
         if (
             "Transmission" in essentials[i].text
