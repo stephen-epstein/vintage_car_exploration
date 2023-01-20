@@ -468,3 +468,77 @@ def get_engine_desc(essentials: str, engine: float):
         suspdesc,
         engine,
     )
+
+
+def get_listings_no_model(make: str):
+    if " " in make:
+        make = make.replace(" ", "-")
+    url = "https://bringatrailer.com/" + make + "/"
+    r = requests.get(url)
+    soup = BeautifulSoup(r.content, "html.parser")
+    url = str(soup)
+    i = 0
+    urls = []
+    while i < len(url):
+        if url[i : i + 5] == '"url"':
+            tempurl = url[i + 7 : i + 200].partition('"')[0]
+            if (
+                "listing" in tempurl
+                and "parts" not in tempurl
+                and "hardtop" not in tempurl
+                and "tool" not in tempurl
+                and "memorabilia" not in tempurl
+                and "tool kit" not in tempurl
+                and "inline" not in tempurl
+                and "removable" not in tempurl
+                and "gearbox" not in tempurl
+            ):
+                if "\\" in tempurl:
+                    tempurl = tempurl.replace("\\", "")
+                    if tempurl not in urls:
+                        urls.append(tempurl.replace("\\", ""))
+        i += 1
+
+    if len(urls) > 30:
+        urlstart = (
+            "https://bringatrailer.com/wp-json/bringatrailer/1.0/data/keyword-filter?s="
+            + make
+            + "&sort=td&page="
+        )
+        urlend = "&results=items"
+        url = []
+        pgnum = 1
+        pgend = 15
+
+        # Iterate through each page (Show More in BaT) and collect urls
+        while pgnum < pgend:
+            url.append(urlstart + str(pgnum) + urlend)
+            pgnum += 1
+
+        # For each URL get soup
+        for j in range(0, len(url)):
+            r = requests.get(url[j])
+            soup = BeautifulSoup(r.content, "html.parser")
+            urltemp = str(soup)
+            i = 0
+            # Search page for all listings and try to filter out non-car listings
+            while i < len(urltemp):
+                if urltemp[i : i + 5] == '"url"':
+                    tempurl = urltemp[i + 7 : i + 200].partition('"')[0]
+                    if (
+                        "listing" in tempurl
+                        and "parts" not in tempurl
+                        and "hardtop" not in tempurl
+                        and "tool" not in tempurl
+                        and "memorabilia" not in tempurl
+                        and "tool kit" not in tempurl
+                        and "inline" not in tempurl
+                        and "removable" not in tempurl
+                        and "gearbox" not in tempurl
+                    ):
+                        if "\\" in tempurl:
+                            tempurl = tempurl.replace("\\", "")
+                            if tempurl not in urls:
+                                urls.append(tempurl.replace("\\", ""))
+                i += 1
+    return urls
