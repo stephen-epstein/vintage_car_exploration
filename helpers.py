@@ -2,7 +2,6 @@ from bs4 import BeautifulSoup
 import requests
 import re
 import pandas as pd
-import joblib
 import os
 import sys
 
@@ -105,6 +104,15 @@ def getmonth(title: str):
     Returns:
         month: Integer of month
     """
+
+    # months = []
+
+    # for index, item in enumerate(months):
+    #     if item in title:
+    #         return index + 1
+
+    # return "N/A"
+
     if "January" in title:
         month = 1
     elif "February" in title:
@@ -174,7 +182,6 @@ def getlocation(loc: str):
         index = loc.index("/place/")
         town = loc[index + 7 : index + 40].partition(",")[0]
         town = town.replace("%20", " ")
-
         state = loc[index + 7 : index + 200].partition(",")[2]
         state = state.partition('"')[0]
         state = state.replace("%20", " ")
@@ -186,6 +193,15 @@ def getlocation(loc: str):
 
 
 def getmileage(mileage: str):
+    """This function pulls the mileage of the car or if TMU (Total Mileage Unknown) it will try to pull the number of miles listed on the odometer.
+
+    Args:
+        Mileage: String of mileage 'li' class in soup
+
+    Returns:
+        Miles: Mileage if not TMU
+        MilesTMU: Mileage if TMU
+    """
     miles = "TMU"
     milestmu = "N/A"
     index = 0
@@ -221,7 +237,24 @@ def getmileage(mileage: str):
     return miles, milestmu
 
 
-def getindicators(contents):
+def getindicators(contents: str):
+    """This function pulls multiple indicator variables if certain specific words appear in the listing body. (0 for no, 1 for yes)
+
+    Args:
+        Contents: String containing the entire body of listing description.
+
+    Returns:
+        rust: Search for rust word
+        refurbished: Search for refurbished word
+        restored: Search for restored word
+        scratch: Search for scratch word
+        paintbub: Search for paint bubble word
+        metalrepair: Search for metal repair word
+        hardtop: Search for hardtop word
+        overdrive: Search for overdrive word
+        turbo: Search for turbocharged word
+        super: Search for supercharged word
+    """
     # Check for Rust
     if " rust" in contents or "Rust" in contents:
         rust = 1
@@ -288,7 +321,17 @@ def getindicators(contents):
     )
 
 
-def getlistings(make, model):
+def getlistings(make: str, model: str):
+    """This function accepts the make and model of the car and constructs a list of listing urls to iterate through in the main code.
+
+    Args:
+        Make: String of car make
+        Model: String of car model
+
+    Returns:
+        ids: list of different series models if available to iterate through (For example Jaguar XKE has series I, II and III pages all separated, this deals with that)
+        urls: list of listing urls
+    """
     ids = []
     input = make + " " + model
     string = '"title":"'
@@ -328,11 +371,30 @@ def getlistings(make, model):
     return ids, urls
 
 
-def getenginedesc(essentials, engine):
+def getenginedesc(essentials: str, engine: float):
+    """This function accepts the essentials class from the soup and the current value of the engine size in float format and checks if the engine is correct and corrects the value if not.
+    It also checks for certain key words and if found it will use the sentence as a description for the relevant output variable.
+
+    Args:
+        essentials: String of car descriptors
+        engine: float of engine displacement in liters
+    Returns:
+        chassis: Chassis Number
+        specialdesc: Descriptor for if mileage is not listed first, usually a special descriptor
+        mileagedesc: Descriptor if mileage is found
+        enginedesc: Descriptor of engine displacement and setup if found
+        transdesc: Descriptor of transmission/gearbox if found
+        paintdesc: Descriptor of car color if found
+        interiodesc: Descriptor of interior if found
+        carbdesc: Descriptor of carburetors if found
+        wheeldesc: Descriptor of wheels if found
+        brakedesc: Descriptor of brakes if found
+        suspdesc: Descriptor of suspension if found
+    """
     try:
         essentials = essentials.findAll("li")
     except:
-        essentials = essentials
+        pass
     chassis = essentials[0].text
     chassis = chassis.partition(":")[2]
     specialdesc = "N/A"
