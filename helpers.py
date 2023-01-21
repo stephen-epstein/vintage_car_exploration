@@ -2,6 +2,12 @@ from bs4 import BeautifulSoup
 import requests
 import re
 
+# Pull HTML data from each url, defined here so that it can run with joblib.Parallel
+def get_data(url):
+    r = requests.get(url, allow_redirects=False)
+    soup = BeautifulSoup(r.content, "html.parser")
+    return str(soup)
+
 
 def get_urls(urlstart: str, urlend: str, pgend: int, urls: list):
     """This function pulls the list of urls for each listing.
